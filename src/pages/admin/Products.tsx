@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Pencil, Trash2, Package } from 'lucide-react';
+import { Plus, Pencil, Trash2, Package, Image as ImageIcon, Video } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -24,6 +24,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { useCategories } from '@/hooks/useCategories';
 import { Skeleton } from '@/components/ui/skeleton';
+import { ProductMediaUpload } from '@/components/admin/ProductMediaUpload';
 
 interface Product {
   id: string;
@@ -36,11 +37,17 @@ interface Product {
   featured: boolean;
   category_id: string | null;
   file_content: string | null;
+  image_url: string | null;
+  video_url: string | null;
+  show_preview: boolean;
 }
 
 export default function AdminProducts() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [videoUrl, setVideoUrl] = useState<string | null>(null);
+  const [showPreview, setShowPreview] = useState(true);
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { data: categories } = useCategories();
@@ -69,6 +76,9 @@ export default function AdminProducts() {
       file_content: string | null;
       is_active: boolean;
       featured: boolean;
+      image_url: string | null;
+      video_url: string | null;
+      show_preview: boolean;
     }) => {
       if (editingProduct) {
         const { error } = await supabase
@@ -85,7 +95,7 @@ export default function AdminProducts() {
       queryClient.invalidateQueries({ queryKey: ['admin-products'] });
       queryClient.invalidateQueries({ queryKey: ['products'] });
       setDialogOpen(false);
-      setEditingProduct(null);
+      resetForm();
       toast({ title: editingProduct ? 'Product updated' : 'Product created' });
     },
     onError: (error: any) => {
@@ -109,6 +119,13 @@ export default function AdminProducts() {
     },
   });
 
+  const resetForm = () => {
+    setEditingProduct(null);
+    setImageUrl(null);
+    setVideoUrl(null);
+    setShowPreview(true);
+  };
+
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
@@ -123,6 +140,9 @@ export default function AdminProducts() {
       file_content: formData.get('file_content') as string || null,
       is_active: formData.get('is_active') === 'on',
       featured: formData.get('featured') === 'on',
+      image_url: imageUrl,
+      video_url: videoUrl,
+      show_preview: showPreview,
     };
 
     saveMutation.mutate(product);
@@ -130,11 +150,14 @@ export default function AdminProducts() {
 
   const openEdit = (product: Product) => {
     setEditingProduct(product);
+    setImageUrl(product.image_url);
+    setVideoUrl(product.video_url);
+    setShowPreview(product.show_preview ?? true);
     setDialogOpen(true);
   };
 
   const openCreate = () => {
-    setEditingProduct(null);
+    resetForm();
     setDialogOpen(true);
   };
 
@@ -142,14 +165,17 @@ export default function AdminProducts() {
     <div>
       <div className="flex items-center justify-between mb-8">
         <h1 className="text-3xl font-bold">Products</h1>
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <Dialog open={dialogOpen} onOpenChange={(open) => {
+          setDialogOpen(open);
+          if (!open) resetForm();
+        }}>
           <DialogTrigger asChild>
             <Button onClick={openCreate} className="glow-primary">
               <Plus className="h-4 w-4 mr-2" />
               Add Product
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>
                 {editingProduct ? 'Edit Product' : 'Add Product'}
@@ -220,6 +246,40 @@ export default function AdminProducts() {
                 </Select>
               </div>
 
+              {/* Media Section */}
+              <div className="space-y-4 p-4 rounded-lg bg-secondary/30 border border-border">
+                <div className="flex items-center justify-between">
+                  <Label className="text-base font-semibold">Product Media</Label>
+                  <div className="flex items-center gap-2">
+                    <Switch
+                      id="show_preview"
+                      checked={showPreview}
+                      onCheckedChange={setShowPreview}
+                    />
+                    <Label htmlFor="show_preview" className="text-sm">
+                      Show Preview
+                    </Label>
+                  </div>
+                </div>
+                
+                {showPreview && (
+                  <div className="grid grid-cols-2 gap-4">
+                    <ProductMediaUpload
+                      type="image"
+                      currentUrl={imageUrl}
+                      onUpload={setImageUrl}
+                      productId={editingProduct?.id}
+                    />
+                    <ProductMediaUpload
+                      type="video"
+                      currentUrl={videoUrl}
+                      onUpload={setVideoUrl}
+                      productId={editingProduct?.id}
+                    />
+                  </div>
+                )}
+              </div>
+
               <div className="space-y-2">
                 <Label htmlFor="file_content">File Content (for delivery)</Label>
                 <Textarea
@@ -267,13 +327,24 @@ export default function AdminProducts() {
         <div className="space-y-4">
           {products.map((product) => (
             <div key={product.id} className="glass-card p-4 flex items-center gap-4">
-              <div className="h-12 w-12 rounded-xl bg-secondary flex items-center justify-center">
-                <Package className="h-6 w-6 text-muted-foreground" />
-              </div>
+              {/* Product Thumbnail */}
+              {product.image_url ? (
+                <div className="h-12 w-12 rounded-xl overflow-hidden flex-shrink-0">
+                  <img 
+                    src={product.image_url} 
+                    alt={product.name}
+                    className="h-full w-full object-cover"
+                  />
+                </div>
+              ) : (
+                <div className="h-12 w-12 rounded-xl bg-secondary flex items-center justify-center flex-shrink-0">
+                  <Package className="h-6 w-6 text-muted-foreground" />
+                </div>
+              )}
               
-              <div className="flex-1">
-                <div className="flex items-center gap-2">
-                  <h3 className="font-semibold">{product.name}</h3>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h3 className="font-semibold truncate">{product.name}</h3>
                   {!product.is_active && (
                     <span className="text-xs px-2 py-0.5 rounded bg-muted text-muted-foreground">
                       Inactive
@@ -284,13 +355,25 @@ export default function AdminProducts() {
                       Featured
                     </span>
                   )}
+                  {product.image_url && (
+                    <span className="text-xs px-2 py-0.5 rounded bg-blue-500/10 text-blue-400">
+                      <ImageIcon className="h-3 w-3 inline mr-1" />
+                      Image
+                    </span>
+                  )}
+                  {product.video_url && (
+                    <span className="text-xs px-2 py-0.5 rounded bg-purple-500/10 text-purple-400">
+                      <Video className="h-3 w-3 inline mr-1" />
+                      Video
+                    </span>
+                  )}
                 </div>
                 <p className="text-sm text-muted-foreground">
                   Stock: {product.stock} | Price: ${Number(product.price).toFixed(2)}
                 </p>
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-shrink-0">
                 <Button
                   variant="ghost"
                   size="icon"

@@ -164,12 +164,15 @@ export type Database = {
           featured: boolean | null
           file_content: string | null
           id: string
+          image_url: string | null
           is_active: boolean | null
           name: string
           price: number
+          show_preview: boolean | null
           slug: string
           stock: number
           updated_at: string
+          video_url: string | null
         }
         Insert: {
           category_id?: string | null
@@ -179,12 +182,15 @@ export type Database = {
           featured?: boolean | null
           file_content?: string | null
           id?: string
+          image_url?: string | null
           is_active?: boolean | null
           name: string
           price?: number
+          show_preview?: boolean | null
           slug: string
           stock?: number
           updated_at?: string
+          video_url?: string | null
         }
         Update: {
           category_id?: string | null
@@ -194,12 +200,15 @@ export type Database = {
           featured?: boolean | null
           file_content?: string | null
           id?: string
+          image_url?: string | null
           is_active?: boolean | null
           name?: string
           price?: number
+          show_preview?: boolean | null
           slug?: string
           stock?: number
           updated_at?: string
+          video_url?: string | null
         }
         Relationships: [
           {
