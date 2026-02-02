@@ -12,6 +12,9 @@ export interface Product {
   featured: boolean;
   category_id: string | null;
   domains: string[] | null;
+  image_url: string | null;
+  video_url: string | null;
+  show_preview: boolean;
   created_at: string;
   category?: {
     id: string;
